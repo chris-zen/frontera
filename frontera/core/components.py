@@ -1,37 +1,9 @@
 from abc import ABCMeta, abstractmethod
 
 
-class Component(object):
-    """
-    Interface definition for a frontier component
-    The :class:`Component <frontera.core.components.Component>` object is the base class for frontier
-    :class:`Middleware <frontera.core.components.Middleware>` and
-    :class:`Backend <frontera.core.components.Backend>` objects.
-
-    :class:`FrontierManager <frontera.core.manager.FrontierManager>` communicates with the active components
-    using the hook methods listed below.
-
-    Implementations are different for  :class:`Middleware <frontera.core.components.Middleware>` and
-    :class:`Backend <frontera.core.components.Backend>` objects, therefore methods are not fully described here
-    but in their corresponding section.
-
-    """
+class Metadata(object):
+    """Interface definition for frontier metadata"""
     __metaclass__ = ABCMeta
-    component_name = 'Base Component'
-
-    @abstractmethod
-    def frontier_start(self):
-        """
-        Called when the frontier starts, see :ref:`starting/stopping the frontier <frontier-start-stop>`.
-        """
-        pass
-
-    @abstractmethod
-    def frontier_stop(self):
-        """
-        Called when the frontier stops, see :ref:`starting/stopping the frontier <frontier-start-stop>`.
-        """
-        pass
 
     @abstractmethod
     def add_seeds(self, seeds):
@@ -63,6 +35,39 @@ class Component(object):
         """
         pass
 
+
+class Component(Metadata):
+    """
+    Interface definition for a frontier component
+    The :class:`Component <frontera.core.components.Component>` object is the base class for frontier
+    :class:`Middleware <frontera.core.components.Middleware>` and
+    :class:`Backend <frontera.core.components.Backend>` objects.
+
+    :class:`FrontierManager <frontera.core.manager.FrontierManager>` communicates with the active components
+    using the hook methods listed below.
+
+    Implementations are different for  :class:`Middleware <frontera.core.components.Middleware>` and
+    :class:`Backend <frontera.core.components.Backend>` objects, therefore methods are not fully described here
+    but in their corresponding section.
+
+    """
+    __metaclass__ = ABCMeta
+    component_name = 'Base Component'
+
+    @abstractmethod
+    def frontier_start(self):
+        """
+        Called when the frontier starts, see :ref:`starting/stopping the frontier <frontier-start-stop>`.
+        """
+        pass
+
+    @abstractmethod
+    def frontier_stop(self):
+        """
+        Called when the frontier stops, see :ref:`starting/stopping the frontier <frontier-start-stop>`.
+        """
+        pass
+
     @property
     def name(self):
         """
@@ -85,10 +90,9 @@ class Component(object):
         return cls()
 
 
-class Backend(Component):
-    """Interface definition for a Frontier Backend"""
+class Queue(object):
+    """Interface definition for a frontier queue"""
     __metaclass__ = ABCMeta
-    component_name = 'Base Backend'
 
     @abstractmethod
     def get_next_requests(self, max_n_requests, **kwargs):
@@ -100,6 +104,52 @@ class Backend(Component):
 
         :return: list of :class:`Request <frontera.core.models.Request>` objects.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def schedule(self, batch):
+        """
+        Schedules a new documents for download from batch.
+
+        :param batch: dict, key - hex string fingerprint, value - tuple(score, url, schedule), if ``schedule`` is True,
+        then document needs to be scheduled for download, False - only update score in metadata.
+        """
+        raise NotImplementedError
+
+
+class States(object):
+    """Interface definition for a frontier document states"""
+
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def update_cache(self, objs):
+        """
+        Reads states from meta['state'] field of request in objs and stores states in internal cache.
+
+        :param objs: list or tuple of :class:`Request <frontera.core.models.Request>` objects.
+        """
+
+    @abstractmethod
+    def set_states(self, objs):
+        """
+        Sets meta['state'] field from cache for every request in objs.
+
+        :param objs: list or tuple of :class:`Request <frontera.core.models.Request>` objects.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def flush(self, force_clear):
+        """
+        Flushes internal cache to storage.
+
+        :param force_clear: boolean, True - signals to clear cache after flush
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def fetch(self, fingerprints):
         raise NotImplementedError
 
 
@@ -122,4 +172,21 @@ class CanonicalSolver(Component):
         :param object response: The :class:`Response <frontera.core.models.Response>` object for the crawled page.
         :return: str
         """
+        raise NotImplementedError
+
+
+class Backend(object):
+    """Interface definition for frontier backend."""
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def metadata(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def queue(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def states(self):
         raise NotImplementedError
