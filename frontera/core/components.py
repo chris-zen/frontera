@@ -1,7 +1,25 @@
 from abc import ABCMeta, abstractmethod
 
 
-class Metadata(object):
+class StartStopMixin(object):
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def frontier_start(self):
+        """
+        Called when the frontier starts, see :ref:`starting/stopping the frontier <frontier-start-stop>`.
+        """
+        pass
+
+    @abstractmethod
+    def frontier_stop(self):
+        """
+        Called when the frontier stops, see :ref:`starting/stopping the frontier <frontier-start-stop>`.
+        """
+        pass
+
+
+class Metadata(StartStopMixin):
     """Interface definition for frontier metadata"""
     __metaclass__ = ABCMeta
 
@@ -36,61 +54,7 @@ class Metadata(object):
         pass
 
 
-class Component(Metadata):
-    """
-    Interface definition for a frontier component
-    The :class:`Component <frontera.core.components.Component>` object is the base class for frontier
-    :class:`Middleware <frontera.core.components.Middleware>` and
-    :class:`Backend <frontera.core.components.Backend>` objects.
-
-    :class:`FrontierManager <frontera.core.manager.FrontierManager>` communicates with the active components
-    using the hook methods listed below.
-
-    Implementations are different for  :class:`Middleware <frontera.core.components.Middleware>` and
-    :class:`Backend <frontera.core.components.Backend>` objects, therefore methods are not fully described here
-    but in their corresponding section.
-
-    """
-    __metaclass__ = ABCMeta
-    component_name = 'Base Component'
-
-    @abstractmethod
-    def frontier_start(self):
-        """
-        Called when the frontier starts, see :ref:`starting/stopping the frontier <frontier-start-stop>`.
-        """
-        pass
-
-    @abstractmethod
-    def frontier_stop(self):
-        """
-        Called when the frontier stops, see :ref:`starting/stopping the frontier <frontier-start-stop>`.
-        """
-        pass
-
-    @property
-    def name(self):
-        """
-        The component name
-        """
-        return self.component_name
-
-    @classmethod
-    def from_manager(cls, manager):
-        """
-        Class method called from :class:`FrontierManager <frontera.core.manager.FrontierManager>` passing the
-        manager itself.
-
-        Example of usage::
-
-            def from_manager(cls, manager):
-                return cls(settings=manager.settings)
-
-        """
-        return cls()
-
-
-class Queue(object):
+class Queue(StartStopMixin):
     """Interface definition for a frontier queue"""
     __metaclass__ = ABCMeta
 
@@ -117,7 +81,7 @@ class Queue(object):
         raise NotImplementedError
 
 
-class States(object):
+class States(StartStopMixin):
     """Interface definition for a frontier document states"""
 
     __metaclass__ = ABCMeta
@@ -153,6 +117,46 @@ class States(object):
         raise NotImplementedError
 
 
+class Component(StartStopMixin, Metadata):
+    """
+    Interface definition for a frontier component
+    The :class:`Component <frontera.core.components.Component>` object is the base class for frontier
+    :class:`Middleware <frontera.core.components.Middleware>` and
+    :class:`Backend <frontera.core.components.Backend>` objects.
+
+    :class:`FrontierManager <frontera.core.manager.FrontierManager>` communicates with the active components
+    using the hook methods listed below.
+
+    Implementations are different for  :class:`Middleware <frontera.core.components.Middleware>` and
+    :class:`Backend <frontera.core.components.Backend>` objects, therefore methods are not fully described here
+    but in their corresponding section.
+
+    """
+    __metaclass__ = ABCMeta
+    component_name = 'Base Component'
+
+    @property
+    def name(self):
+        """
+        The component name
+        """
+        return self.component_name
+
+    @classmethod
+    def from_manager(cls, manager):
+        """
+        Class method called from :class:`FrontierManager <frontera.core.manager.FrontierManager>` passing the
+        manager itself.
+
+        Example of usage::
+
+            def from_manager(cls, manager):
+                return cls(settings=manager.settings)
+
+        """
+        return cls()
+
+
 class Middleware(Component):
     """Interface definition for a Frontier Middlewares"""
     __metaclass__ = ABCMeta
@@ -175,18 +179,26 @@ class CanonicalSolver(Component):
         raise NotImplementedError
 
 
-class Backend(object):
+class Backend(StartStopMixin, Metadata):
     """Interface definition for frontier backend."""
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def metadata(self):
+    def finished(self):
+        """
+        Quick check if crawling is finished. Called pretty often, please make sure calls are lightweight.
+        :return: boolean
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def queue(self):
-        raise NotImplementedError
+    def get_next_requests(self, max_n_requests, **kwargs):
+        """
+        Returns a list of next requests to be crawled.
 
-    @abstractmethod
-    def states(self):
+        :param int max_next_requests: Maximum number of requests to be returned by this method.
+        :param dict kwargs: A parameters from downloader component.
+
+        :return: list of :class:`Request <frontera.core.models.Request>` objects.
+        """
         raise NotImplementedError
