@@ -80,6 +80,14 @@ class Queue(StartStopMixin):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def count(self):
+        """
+        Returns count of documents in the queue.
+        :return: int
+        """
+        raise NotImplementedError
+
 
 class States(StartStopMixin):
     """Interface definition for a frontier document states"""
