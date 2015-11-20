@@ -92,6 +92,7 @@ class QueueModel(DeclarativeBase):
     score = Column(Float, index=True)
     url = Column(String(1024), nullable=False)
     fingerprint = Column(String(40), nullable=False)
+    host_crc32 = Column(Integer, nullable=False)
     meta = Column(PickleType())
     headers = Column(PickleType())
     cookies = Column(PickleType())
