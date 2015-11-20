@@ -59,7 +59,7 @@ class Queue(StartStopMixin):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def get_next_requests(self, max_n_requests, **kwargs):
+    def get_next_requests(self, max_n_requests, partition_id, **kwargs):
         """
         Returns a list of next requests to be crawled.
 
@@ -73,7 +73,7 @@ class Queue(StartStopMixin):
     @abstractmethod
     def schedule(self, batch):
         """
-        Schedules a new documents for download from batch.
+        Schedules a new documents for download from batch, and updates score in metadata.
 
         :param batch: dict, key - hex string fingerprint, value - tuple(score, url, schedule), if ``schedule`` is True,
         then document needs to be scheduled for download, False - only update score in metadata.
@@ -210,3 +210,28 @@ class Backend(StartStopMixin, Metadata):
         :return: list of :class:`Request <frontera.core.models.Request>` objects.
         """
         raise NotImplementedError
+
+
+class Partitioner(object):
+    """
+    Base class for a partitioner
+    """
+    def __init__(self, partitions):
+        """
+        Initialize the partitioner
+
+        Arguments:
+            partitions: A list of available partitions (during startup)
+        """
+        self.partitions = partitions
+
+    def partition(self, key, partitions=None):
+        """
+        Takes a string key and num_partitions as argument and returns
+        a partition to be used for the message
+
+        Arguments:
+            key: the key to use for partitioning
+            partitions: (optional) a list of partitions.
+        """
+        raise NotImplementedError('partition function has to be implemented')
