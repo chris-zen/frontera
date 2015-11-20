@@ -61,11 +61,6 @@ class StateModel(DeclarativeBase):
         },
     )
 
-    NOT_CRAWLED = 0
-    QUEUED = 1
-    CRAWLED = 2
-    ERROR = 3
-
     fingerprint = Column(String(40), primary_key=True, nullable=False)
     state = Column(SmallInteger())
 
