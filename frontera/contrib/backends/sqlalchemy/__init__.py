@@ -1,13 +1,10 @@
 from __future__ import absolute_import
 
-import datetime
-import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from frontera import Backend
 from frontera.utils.misc import load_object
-from frontera.core.models import Request, Response
 from frontera.contrib.backends.sqlalchemy.models import DeclarativeBase
 from frontera.contrib.backends.sqlalchemy.components import SQLAlchemyMetadata, SQLAlchemyQueue, SQLAlchemyState
 
@@ -49,8 +46,10 @@ class SQLAlchemyBackend(Backend):
         self.session_cls.configure(bind=self.engine)
 
         if clear_content:
+            session = self.session_cls()
             for name, table in DeclarativeBase.metadata.tables.items():
-                self.session.execute(table.delete())
+                session.execute(table.delete())
+            session.close()
         self.metadata = SQLAlchemyMetadata(self.session_cls, self.models['MetadataModel'])
         self.queue = SQLAlchemyQueue(self.session_cls, self.models['QueueModel'], self.models['MetadataModel'], 1)
         self.states = SQLAlchemyState(self.session_cls, self.models['StateModel'],
@@ -82,15 +81,16 @@ class SQLAlchemyBackend(Backend):
         batch = {}
         queue_incr = 0
         for request in requests:
-            schedule = True if request.meta['state'] in [SQLAlchemyState.NOT_CRAWLED, SQLAlchemyState.ERROR] else False
-            batch[request.meta['fingerprint']] = (request.url, 1.0, schedule)
+            schedule = True if request.meta['state'] in [SQLAlchemyState.NOT_CRAWLED, SQLAlchemyState.ERROR, None] else False
+            batch[request.meta['fingerprint']] = (1.0, request.url, schedule)
+
             if schedule:
                 queue_incr += 1
         self.queue.schedule(batch)
         self.queue_size += queue_incr
 
     def get_next_requests(self, max_next_requests, **kwargs):
-        batch = self.queue.get_next_requests(max_next_requests, **kwargs)
+        batch = self.queue.get_next_requests(max_next_requests, 0, **kwargs)
         self.queue_size -= len(batch)
         return batch
 

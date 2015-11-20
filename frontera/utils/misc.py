@@ -30,3 +30,8 @@ def load_object(path):
 
 def get_crc32(name):
     return crc32(name) if type(name) is str else crc32(name.encode('utf-8', 'ignore'))
+
+
+def chunks(l, n):
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]

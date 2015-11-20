@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import logging
 import datetime
-from frontera import Metadata, States, Queue
+from frontera.core.components import Metadata, States, Queue
 from frontera.core.models import Request, Response
 from frontera.utils.url import parse_domain_from_url_fast
 from frontera.contrib.backends import Crc32NamePartitioner
-from frontera.utils.misc import get_crc32
+from frontera.utils.misc import get_crc32, chunks
 from frontera.contrib.backends.sqlalchemy.models import DeclarativeBase
 
 
@@ -77,8 +77,9 @@ class SQLAlchemyState(States):
         self.logger.debug("cache size %s" % len(self._cache))
         self.logger.debug("to fetch %d from %d" % (len(to_fetch), len(fingerprints)))
 
-        for state in self.session.query(self.model).filter(self.model.fingerprint.in_(to_fetch)):
-            self._cache[state.fingerprint] = state.state
+        for chunk in chunks(to_fetch, 128):
+            for state in self.session.query(self.model).filter(self.model.fingerprint.in_(chunk)):
+                self._cache[state.fingerprint] = state.state
 
     def flush(self, force_clear=False):
         if len(self._cache) > self._cache_size_limit:
@@ -87,6 +88,7 @@ class SQLAlchemyState(States):
             state = self.model(fingerprint=fingerprint, state=state_val)
             self.session.add(state)
         self.session.commit()
+        self.logger.debug("State cache has been flushed.")
         if force_clear:
             self.logger.debug("Cache has %d items, clearing" % len(self._cache))
             self._cache.clear()
@@ -138,13 +140,13 @@ class SQLAlchemyQueue(Queue):
         :param kwargs: min_requests, min_hosts, max_requests_per_host
         :return: list of :class:`Request <frontera.core.models.Request>` objects.
         """
-        min_requests = kwargs.pop("min_requests")
-        min_hosts = kwargs.pop("min_hosts")
-        max_requests_per_host = kwargs.pop("max_requests_per_host")
+        min_requests = kwargs.pop("min_requests", None)
+        min_hosts = kwargs.pop("min_hosts", None)
+        max_requests_per_host = kwargs.pop("max_requests_per_host", None)
         assert(max_n_requests > min_requests)
 
         queue = {}
-        limit = min_requests
+        limit = max_n_requests
         tries = 0
         count = 0
         while tries < self.GET_RETRIES:
@@ -168,16 +170,17 @@ class SQLAlchemyQueue(Queue):
             if min_hosts is not None and len(queue.keys()) < min_hosts:
                 continue
 
-            if count < min_requests:
+            if min_requests is not None and count < min_requests:
                 continue
             break
         self.logger.debug("Finished: tries %d, hosts %d, requests %d" % (tries, len(queue.keys()), count))
 
         results = []
-        for item in queue.itervalues():
-            method = 'GET' if not item.method else item.method
-            results.append(Request(item.url, method=method, meta=item.meta, headers=item.headers, cookies=item.cookies))
-            item.delete()
+        for items in queue.itervalues():
+            for item in items:
+                method = 'GET' if not item.method else item.method
+                results.append(Request(item.url, method=method, meta=item.meta, headers=item.headers, cookies=item.cookies))
+                self.session.delete(item)
         self.session.commit()
         return results
 

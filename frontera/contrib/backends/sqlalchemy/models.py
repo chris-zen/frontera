@@ -37,6 +37,7 @@ class MetadataModel(DeclarativeBase):
     depth = Column(Integer, nullable=False)
     created_at = Column(DatetimeTimestamp(20), nullable=False)
     status_code = Column(String(20))
+    score = Column(Float)
     error = Column(String(20))
     meta = Column(PickleType())
     headers = Column(PickleType())
