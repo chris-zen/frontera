@@ -76,7 +76,6 @@ class CommonBackend(Backend):
         for link in links:
             to_fetch.append(link.meta['fingerprint'])
             link.meta['depth'] = depth
-        print response.url, depth
         self.states.fetch(to_fetch)
         self.states.set_states(links)
         self.metadata.page_crawled(response, links)
