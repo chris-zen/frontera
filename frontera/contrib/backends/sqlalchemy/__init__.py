@@ -118,13 +118,25 @@ class SQLAlchemyBackend(CommonBackend):
             for name, table in DeclarativeBase.metadata.tables.items():
                 session.execute(table.delete())
             session.close()
-            self.metadata = SQLAlchemyMetadata(self.session_cls, self.models['MetadataModel'])
-            self.states = SQLAlchemyState(self.session_cls, self.models['StateModel'],
-                                          settings.get('STATE_CACHE_SIZE_LIMIT'))
-            self.queue = self._create_queue(settings)
+            self._metadata = SQLAlchemyMetadata(self.session_cls, self.models['MetadataModel'])
+            self._states = SQLAlchemyState(self.session_cls, self.models['StateModel'],
+                                           settings.get('STATE_CACHE_SIZE_LIMIT'))
+            self._queue = self._create_queue(settings)
 
     def _create_queue(self, settings):
         return SQLAlchemyQueue(self.session_cls, self.models['QueueModel'], self.models['MetadataModel'], 1)
+
+    @property
+    def queue(self):
+        return self._queue
+
+    @property
+    def metadata(self):
+        return self._metadata
+
+    @property
+    def states(self):
+        return self._states
 
 
 class FIFOBackend(SQLAlchemyBackend):
@@ -132,7 +144,7 @@ class FIFOBackend(SQLAlchemyBackend):
 
     def _create_queue(self, settings):
         return SQLAlchemyQueue(self.session_cls, self.models['QueueModel'], self.models['MetadataModel'], 1,
-                                     ordering='created')
+                               ordering='created')
 
 
 class LIFOBackend(SQLAlchemyBackend):
@@ -140,7 +152,7 @@ class LIFOBackend(SQLAlchemyBackend):
 
     def _create_queue(self, settings):
         return SQLAlchemyQueue(self.session_cls, self.models['QueueModel'], self.models['MetadataModel'], 1,
-                                     ordering='created_desc')
+                               ordering='created_desc')
 
 
 class DFSBackend(SQLAlchemyBackend):

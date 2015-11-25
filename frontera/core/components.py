@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 
 
 class StartStopMixin(object):
@@ -186,6 +186,27 @@ class CanonicalSolver(Component):
 class Backend(Metadata):
     """Interface definition for frontier backend."""
     __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def queue(self):
+        """
+        :return: associated :class:`Queue <frontera.core.components.Queue>` object
+        """
+        raise NotImplementedError
+
+    @abstractproperty
+    def metadata(self):
+        """
+        :return: associated :class:`Metadata <frontera.core.components.Metadata>` object
+        """
+        raise NotImplementedError
+
+    @abstractproperty
+    def states(self):
+        """
+        :return: associated :class:`States <frontera.core.components.States>` object
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def finished(self):
