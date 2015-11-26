@@ -48,7 +48,7 @@ class MemoryQueue(Queue):
             self.heap[partition] = Heap(self._compare_pages)
 
     def count(self):
-        return sum(map(len, self.heap.itervalues()))
+        return sum(map(lambda h: len(h.heap), self.heap.itervalues()))
 
     def get_next_requests(self, max_n_requests, partition_id, **kwargs):
         return self.heap[partition_id].pop(max_n_requests)
@@ -182,7 +182,7 @@ class MemoryBaseBackend(Backend):
         self.states.update_cache(request)
 
     def finished(self):
-        return self.queue.count()
+        return self.queue.count() == 0
 
 
 class MemoryFIFOQueue(MemoryQueue):
